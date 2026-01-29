@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Graph — Spatial Experience</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&family=SF+Pro+Text:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: local('SF Pro Display'), local('SFProDisplay-Regular');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* visionOS Color System */
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-bg-hover: rgba(255, 255, 255, 0.12);
+            --glass-bg-active: rgba(255, 255, 255, 0.18);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-border-light: rgba(255, 255, 255, 0.2);
+            
+            --text-primary: rgba(255, 255, 255, 0.95);
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-tertiary: rgba(255, 255, 255, 0.5);
+            
+            --accent-blue: #0A84FF;
+            --accent-green: #30D158;
+            --accent-orange: #FF9F0A;
+            --accent-pink: #FF375F;
+            --accent-purple: #BF5AF2;
+            --accent-teal: #64D2FF;
+            
+            --shadow-ambient: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --shadow-depth: 0 24px 80px rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* visionOS Glass Panel */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: var(--shadow-ambient);
+        }
+
+        .glass-panel-elevated {
+            background: var(--glass-bg-hover);
+            box-shadow: var(--shadow-depth);
+        }
+
+        /* Home View - Top Center */
+        .home-indicator {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            padding: 12px 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .home-indicator .app-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .home-indicator .app-title {
+            font-size: 17px;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        /* Control Panel - Left */
+        .control-panel {
+            position: fixed;
+            top: 50%;
+            left: 40px;
+            transform: translateY(-50%);
+            z-index: 100;
+            width: 280px;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .control-panel::-webkit-scrollbar {
+            width: 0;
+        }
+
+        .panel-section {
+            margin-bottom: 28px;
+        }
+
+        .panel-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            margin-bottom: 14px;
+        }
+
+        /* Search Field */
+        .search-field {
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 18px 14px 44px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            color: var(--text-primary);
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--glass-border-light);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            font-size: 16px;
+        }
+
+        /* Filter Pills */
+        .filter-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-pill {
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid transparent;
+            border-radius: 100px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-pill:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-pill.active {
+            background: var(--glass-bg-active);
+            border-color: var(--glass-border-light);
+            color: var(--text-primary);
+        }
+
+        .filter-pill .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .filter-pill[data-type="photo"] .indicator { background: var(--accent-blue); }
+        .filter-pill[data-type="person"] .indicator { background: var(--accent-green); }
+        .filter-pill[data-type="place"] .indicator { background: var(--accent-orange); }
+        .filter-pill[data-type="time"] .indicator { background: var(--accent-pink); }
+        .filter-pill[data-type="tag"] .indicator { background: var(--accent-purple); }
+        .filter-pill[data-type="file"] .indicator { background: var(--accent-teal); }
+
+        /* Detail Panel - Right */
+        .detail-panel {
+            position: fixed;
+            top: 50%;
+            right: 40px;
+            transform: translateY(-50%) translateX(400px);
+            z-index: 100;
+            width: 340px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 0;
+            transition: transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        .detail-panel.visible {
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .detail-panel::-webkit-scrollbar {
+            width: 0;
+        }
+
+        .detail-header {
+            position: relative;
+            padding: 24px 24px 20px;
+        }
+
+        .detail-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: var(--text-secondary);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .detail-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+        }
+
+        .detail-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .detail-icon.photo { background: linear-gradient(135deg, var(--accent-blue), #0066CC); }
+        .detail-icon.person { background: linear-gradient(135deg, var(--accent-green), #28A745); }
+        .detail-icon.place { background: linear-gradient(135deg, var(--accent-orange), #E67E00); }
+        .detail-icon.time { background: linear-gradient(135deg, var(--accent-pink), #D63384); }
+        .detail-icon.tag { background: linear-gradient(135deg, var(--accent-purple), #9F37B0); }
+        .detail-icon.file { background: linear-gradient(135deg, var(--accent-teal), #0095B3); }
+
+        .detail-title {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+            padding-right: 40px;
+        }
+
+        .detail-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .detail-preview {
+            margin: 0 24px 20px;
+            border-radius: 16px;
+            overflow: hidden;
+            aspect-ratio: 16/10;
+        }
+
+        .detail-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .detail-section {
+            padding: 0 24px 20px;
+        }
+
+        .detail-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            margin-bottom: 12px;
+        }
+
+        .metadata-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .metadata-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .metadata-label {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .metadata-value {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .connection-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .connection-item {
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 100px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .connection-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-primary);
+        }
+
+        .connection-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        /* Stats Bar - Bottom */
+        .stats-bar {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            gap: 2px;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .stat-item {
+            padding: 16px 28px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px) saturate(180%);
+            text-align: center;
+        }
+
+        .stat-item:first-child {
+            border-radius: 16px 0 0 16px;
+        }
+
+        .stat-item:last-child {
+            border-radius: 0 16px 16px 0;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-top: 4px;
+        }
+
+        /* Spatial Controls */
+        .spatial-controls {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .spatial-btn {
+            width: 52px;
+            height: 52px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px) saturate(180%);
+            border: none;
+            color: var(--text-secondary);
+            font-size: 22px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spatial-btn:hover {
+            background: var(--glass-bg-hover);
+            color: var(--text-primary);
+        }
+
+        .spatial-btn:first-child {
+            border-radius: 14px 14px 0 0;
+        }
+
+        .spatial-btn:last-child {
+            border-radius: 0 0 14px 14px;
+        }
+
+        /* Control Hint */
+        .control-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 40px;
+            z-index: 100;
+            padding: 14px 20px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+            display: flex;
+            gap: 20px;
+        }
+
+        .hint-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hint-key {
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* Floating Labels */
+        .node-label-3d {
+            position: absolute;
+            padding: 8px 14px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            pointer-events: none;
+            white-space: nowrap;
+            transform: translate(-50%, 0);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .node-label-3d.visible {
+            opacity: 1;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: fixed;
+            padding: 14px 18px;
+            background: var(--glass-bg-hover);
+            backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 1000;
+            max-width: 240px;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .tooltip-type {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Loading */
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.6s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin-bottom: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .loading-text {
+            font-size: 17px;
+            color: var(--text-secondary);
+            letter-spacing: -0.01em;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+
+        /* Environment gradient overlay */
+        .environment-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(10, 132, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(191, 90, 242, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.2) 0%, transparent 80%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading -->
+    <div class="loading-screen" id="loading">
+        <div class="loading-icon">◎</div>
+        <div class="loading-text">공간 경험을 준비하는 중...</div>
+    </div>
+
+    <!-- Environment -->
+    <div class="environment-overlay"></div>
+
+    <!-- Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- Home Indicator -->
+    <div class="home-indicator glass-panel">
+        <div class="app-icon">◎</div>
+        <div class="app-title">Memory Graph</div>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-panel glass-panel">
+        <div class="panel-section">
+            <div class="section-title">검색</div>
+            <div class="search-field">
+                <span class="search-icon">⌕</span>
+                <input type="text" class="search-input" placeholder="사진, 장소, 사람 검색..." id="search-input">
+            </div>
+        </div>
+        <div class="panel-section">
+            <div class="section-title">필터</div>
+            <div class="filter-pills">
+                <button class="filter-pill active" data-type="all">전체</button>
+                <button class="filter-pill active" data-type="photo"><span class="indicator"></span>사진</button>
+                <button class="filter-pill active" data-type="person"><span class="indicator"></span>인물</button>
+                <button class="filter-pill active" data-type="place"><span class="indicator"></span>장소</button>
+                <button class="filter-pill active" data-type="time"><span class="indicator"></span>시간</button>
+                <button class="filter-pill active" data-type="tag"><span class="indicator"></span>태그</button>
+                <button class="filter-pill active" data-type="file"><span class="indicator"></span>파일</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div class="detail-panel glass-panel glass-panel-elevated" id="detail-panel">
+        <button class="detail-close" id="detail-close">×</button>
+        <div id="detail-content"></div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-value" id="node-count">0</div>
+            <div class="stat-label">노드</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="link-count">0</div>
+            <div class="stat-label">연결</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="photo-count">0</div>
+            <div class="stat-label">사진</div>
+        </div>
+    </div>
+
+    <!-- Spatial Controls -->
+    <div class="spatial-controls">
+        <button class="spatial-btn" id="zoom-in">+</button>
+        <button class="spatial-btn" id="zoom-out">−</button>
+        <button class="spatial-btn" id="reset-view">⌂</button>
+    </div>
+
+    <!-- Control Hint -->
+    <div class="control-hint glass-panel">
+        <div class="hint-item"><span class="hint-key">드래그</span> 회전</div>
+        <div class="hint-item"><span class="hint-key">스크롤</span> 확대</div>
+        <div class="hint-item"><span class="hint-key">클릭</span> 선택</div>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip">
+        <div class="tooltip-title"></div>
+        <div class="tooltip-type"></div>
+    </div>
+
+    <!-- Labels Container -->
+    <div id="labels-container"></div>
+
+    <script>
+        // ============ DATA - 96 Nodes ============
+        const nodes = [
+            // Photos (24) - Real Unsplash Images
+            { id: 'photo_1', type: 'photo', label: '도쿄 라멘', image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400', date: '2024.03.12', location: '도쿄' },
+            { id: 'photo_2', type: 'photo', label: '교토 벚꽃', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400', date: '2024.03.15', location: '교토' },
+            { id: 'photo_3', type: 'photo', label: '파리 에펠탑', image: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce65f4?w=400', date: '2024.05.20', location: '파리' },
+            { id: 'photo_4', type: 'photo', label: '프렌치 쿠킹', image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400', date: '2024.05.22', location: '파리' },
+            { id: 'photo_5', type: 'photo', label: '바르셀로나 해변', image: 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=400', date: '2024.06.10', location: '바르셀로나' },
+            { id: 'photo_6', type: 'photo', label: '타파스 파티', image: 'https://images.unsplash.com/photo-1515443961218-a51367888e4b?w=400', date: '2024.06.12', location: '바르셀로나' },
+            { id: 'photo_7', type: 'photo', label: '뉴욕 브런치', image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400', date: '2024.07.05', location: '뉴욕' },
+            { id: 'photo_8', type: 'photo', label: '센트럴 파크', image: 'https://images.unsplash.com/photo-1568515387631-8b650bbcdb90?w=400', date: '2024.07.06', location: '뉴욕' },
+            { id: 'photo_9', type: 'photo', label: '방콕 길거리', image: 'https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400', date: '2024.08.18', location: '방콕' },
+            { id: 'photo_10', type: 'photo', label: '태국 쿠킹클래스', image: 'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=400', date: '2024.08.20', location: '치앙마이' },
+            { id: 'photo_11', type: 'photo', label: '발리 선셋', image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400', date: '2024.09.01', location: '발리' },
+            { id: 'photo_12', type: 'photo', label: '홈 파스타', image: 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=400', date: '2024.09.15', location: '샌프란시스코' },
+            { id: 'photo_13', type: 'photo', label: '런던 브릿지', image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400', date: '2024.04.05', location: '런던' },
+            { id: 'photo_14', type: 'photo', label: '암스테르담 운하', image: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=400', date: '2024.04.10', location: '암스테르담' },
+            { id: 'photo_15', type: 'photo', label: '스위스 알프스', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400', date: '2024.04.15', location: '스위스' },
+            { id: 'photo_16', type: 'photo', label: '로마 콜로세움', image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400', date: '2024.05.01', location: '로마' },
+            { id: 'photo_17', type: 'photo', label: '산토리니', image: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=400', date: '2024.05.10', location: '그리스' },
+            { id: 'photo_18', type: 'photo', label: '두바이 스카이라인', image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400', date: '2024.10.01', location: '두바이' },
+            { id: 'photo_19', type: 'photo', label: '싱가포르 나이트', image: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=400', date: '2024.10.10', location: '싱가포르' },
+            { id: 'photo_20', type: 'photo', label: '홍콩 피크', image: 'https://images.unsplash.com/photo-1536599018102-9f803c140fc1?w=400', date: '2024.10.15', location: '홍콩' },
+            { id: 'photo_21', type: 'photo', label: '서울 야경', image: 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=400', date: '2024.11.01', location: '서울' },
+            { id: 'photo_22', type: 'photo', label: '시드니 오페라', image: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=400', date: '2024.11.10', location: '시드니' },
+            { id: 'photo_23', type: 'photo', label: '몰디브 비치', image: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=400', date: '2024.12.01', location: '몰디브' },
+            { id: 'photo_24', type: 'photo', label: '아이슬란드 오로라', image: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400', date: '2024.12.15', location: '아이슬란드' },
+            
+            // People (16)
+            { id: 'person_1', type: 'person', label: 'Emma', desc: '여동생', emoji: '👩' },
+            { id: 'person_2', type: 'person', label: 'Marcus', desc: '파트너', emoji: '👨' },
+            { id: 'person_3', type: 'person', label: 'Yuki', desc: '일본 친구', emoji: '👩' },
+            { id: 'person_4', type: 'person', label: 'Pierre', desc: '셰프 멘토', emoji: '👨‍🍳' },
+            { id: 'person_5', type: 'person', label: 'Lisa', desc: '대학 동창', emoji: '👩‍🦰' },
+            { id: 'person_6', type: 'person', label: 'Carlos', desc: '바르셀로나 가이드', emoji: '🧑' },
+            { id: 'person_7', type: 'person', label: 'Mom', desc: '가족', emoji: '👩‍🦳' },
+            { id: 'person_8', type: 'person', label: 'Dad', desc: '가족', emoji: '👨‍🦳' },
+            { id: 'person_9', type: 'person', label: 'Alex', desc: '직장 동료', emoji: '🧑‍💻' },
+            { id: 'person_10', type: 'person', label: 'Mei', desc: '싱가포르 친구', emoji: '👩' },
+            { id: 'person_11', type: 'person', label: 'Oliver', desc: '런던 친구', emoji: '👨' },
+            { id: 'person_12', type: 'person', label: 'Sofia', desc: '로마 가이드', emoji: '👩' },
+            { id: 'person_13', type: 'person', label: 'Jin', desc: '서울 친구', emoji: '👨' },
+            { id: 'person_14', type: 'person', label: 'Liam', desc: '조카', emoji: '👦' },
+            { id: 'person_15', type: 'person', label: 'Grandma', desc: '가족', emoji: '👵' },
+            { id: 'person_16', type: 'person', label: 'Chef Marco', desc: '로마 셰프', emoji: '👨‍🍳' },
+            
+            // Places (18)
+            { id: 'place_1', type: 'place', label: '도쿄', emoji: '🗼' },
+            { id: 'place_2', type: 'place', label: '교토', emoji: '⛩️' },
+            { id: 'place_3', type: 'place', label: '파리', emoji: '🗼' },
+            { id: 'place_4', type: 'place', label: '바르셀로나', emoji: '🏖️' },
+            { id: 'place_5', type: 'place', label: '뉴욕', emoji: '🗽' },
+            { id: 'place_6', type: 'place', label: '방콕', emoji: '🛕' },
+            { id: 'place_7', type: 'place', label: '치앙마이', emoji: '🏯' },
+            { id: 'place_8', type: 'place', label: '발리', emoji: '🌴' },
+            { id: 'place_9', type: 'place', label: '샌프란시스코', emoji: '🌉' },
+            { id: 'place_10', type: 'place', label: '런던', emoji: '🎡' },
+            { id: 'place_11', type: 'place', label: '암스테르담', emoji: '🚲' },
+            { id: 'place_12', type: 'place', label: '스위스', emoji: '🏔️' },
+            { id: 'place_13', type: 'place', label: '로마', emoji: '🏛️' },
+            { id: 'place_14', type: 'place', label: '산토리니', emoji: '🏝️' },
+            { id: 'place_15', type: 'place', label: '두바이', emoji: '🏙️' },
+            { id: 'place_16', type: 'place', label: '싱가포르', emoji: '🦁' },
+            { id: 'place_17', type: 'place', label: '홍콩', emoji: '🌃' },
+            { id: 'place_18', type: 'place', label: '서울', emoji: '🇰🇷' },
+            
+            // Time (12)
+            { id: 'time_1', type: 'time', label: '2024년 3월', emoji: '🌸' },
+            { id: 'time_2', type: 'time', label: '2024년 4월', emoji: '🌷' },
+            { id: 'time_3', type: 'time', label: '2024년 5월', emoji: '🌺' },
+            { id: 'time_4', type: 'time', label: '2024년 6월', emoji: '☀️' },
+            { id: 'time_5', type: 'time', label: '2024년 7월', emoji: '🌻' },
+            { id: 'time_6', type: 'time', label: '2024년 8월', emoji: '🏖️' },
+            { id: 'time_7', type: 'time', label: '2024년 9월', emoji: '🍂' },
+            { id: 'time_8', type: 'time', label: '2024년 10월', emoji: '🎃' },
+            { id: 'time_9', type: 'time', label: '2024년 11월', emoji: '🍁' },
+            { id: 'time_10', type: 'time', label: '2024년 12월', emoji: '❄️' },
+            { id: 'time_11', type: 'time', label: '2024 상반기', emoji: '📅' },
+            { id: 'time_12', type: 'time', label: '2024 하반기', emoji: '📅' },
+            
+            // Tags (16)
+            { id: 'tag_1', type: 'tag', label: '음식', emoji: '🍽️' },
+            { id: 'tag_2', type: 'tag', label: '여행', emoji: '✈️' },
+            { id: 'tag_3', type: 'tag', label: '요리', emoji: '👩‍🍳' },
+            { id: 'tag_4', type: 'tag', label: '자연', emoji: '🌿' },
+            { id: 'tag_5', type: 'tag', label: '도시', emoji: '🏙️' },
+            { id: 'tag_6', type: 'tag', label: '친구', emoji: '🥂' },
+            { id: 'tag_7', type: 'tag', label: '가족', emoji: '👨‍👩‍👧' },
+            { id: 'tag_8', type: 'tag', label: '블로그', emoji: '📝' },
+            { id: 'tag_9', type: 'tag', label: '해변', emoji: '🏖️' },
+            { id: 'tag_10', type: 'tag', label: '산', emoji: '⛰️' },
+            { id: 'tag_11', type: 'tag', label: '나이트라이프', emoji: '🌃' },
+            { id: 'tag_12', type: 'tag', label: '문화', emoji: '🎭' },
+            { id: 'tag_13', type: 'tag', label: '모험', emoji: '🧗' },
+            { id: 'tag_14', type: 'tag', label: '휴식', emoji: '🧘' },
+            { id: 'tag_15', type: 'tag', label: '업무', emoji: '💼' },
+            { id: 'tag_16', type: 'tag', label: '쇼핑', emoji: '🛍️' },
+            
+            // Files (10)
+            { id: 'file_1', type: 'file', label: '일본 가이드.pdf', emoji: '📄' },
+            { id: 'file_2', type: 'file', label: '프렌치 레시피', emoji: '📋' },
+            { id: 'file_3', type: 'file', label: '2024 예산.xlsx', emoji: '📊' },
+            { id: 'file_4', type: 'file', label: '블로그 초안', emoji: '📝' },
+            { id: 'file_5', type: 'file', label: '태국 레시피', emoji: '🍜' },
+            { id: 'file_6', type: 'file', label: '유럽 일정표', emoji: '🗺️' },
+            { id: 'file_7', type: 'file', label: '사진 백업', emoji: '💾' },
+            { id: 'file_8', type: 'file', label: '여행자 보험', emoji: '📑' },
+            { id: 'file_9', type: 'file', label: '비자 서류', emoji: '🛂' },
+            { id: 'file_10', type: 'file', label: '연락처 목록', emoji: '📇' },
+        ];
+
+        // Links
+        const links = [
+            // Photo-Person
+            { source: 'photo_1', target: 'person_3' },
+            { source: 'photo_2', target: 'person_3' },
+            { source: 'photo_2', target: 'person_2' },
+            { source: 'photo_3', target: 'person_2' },
+            { source: 'photo_4', target: 'person_4' },
+            { source: 'photo_5', target: 'person_1' },
+            { source: 'photo_5', target: 'person_6' },
+            { source: 'photo_6', target: 'person_6' },
+            { source: 'photo_7', target: 'person_5' },
+            { source: 'photo_8', target: 'person_5' },
+            { source: 'photo_8', target: 'person_2' },
+            { source: 'photo_9', target: 'person_2' },
+            { source: 'photo_10', target: 'person_2' },
+            { source: 'photo_11', target: 'person_7' },
+            { source: 'photo_11', target: 'person_8' },
+            { source: 'photo_12', target: 'person_2' },
+            { source: 'photo_13', target: 'person_11' },
+            { source: 'photo_14', target: 'person_2' },
+            { source: 'photo_15', target: 'person_1' },
+            { source: 'photo_16', target: 'person_12' },
+            { source: 'photo_16', target: 'person_16' },
+            { source: 'photo_17', target: 'person_2' },
+            { source: 'photo_18', target: 'person_9' },
+            { source: 'photo_19', target: 'person_10' },
+            { source: 'photo_20', target: 'person_2' },
+            { source: 'photo_21', target: 'person_13' },
+            { source: 'photo_22', target: 'person_1' },
+            { source: 'photo_23', target: 'person_2' },
+            { source: 'photo_23', target: 'person_7' },
+            { source: 'photo_24', target: 'person_2' },
+            
+            // Photo-Place
+            { source: 'photo_1', target: 'place_1' },
+            { source: 'photo_2', target: 'place_2' },
+            { source: 'photo_3', target: 'place_3' },
+            { source: 'photo_4', target: 'place_3' },
+            { source: 'photo_5', target: 'place_4' },
+            { source: 'photo_6', target: 'place_4' },
+            { source: 'photo_7', target: 'place_5' },
+            { source: 'photo_8', target: 'place_5' },
+            { source: 'photo_9', target: 'place_6' },
+            { source: 'photo_10', target: 'place_7' },
+            { source: 'photo_11', target: 'place_8' },
+            { source: 'photo_12', target: 'place_9' },
+            { source: 'photo_13', target: 'place_10' },
+            { source: 'photo_14', target: 'place_11' },
+            { source: 'photo_15', target: 'place_12' },
+            { source: 'photo_16', target: 'place_13' },
+            { source: 'photo_17', target: 'place_14' },
+            { source: 'photo_18', target: 'place_15' },
+            { source: 'photo_19', target: 'place_16' },
+            { source: 'photo_20', target: 'place_17' },
+            { source: 'photo_21', target: 'place_18' },
+            
+            // Photo-Time
+            { source: 'photo_1', target: 'time_1' },
+            { source: 'photo_2', target: 'time_1' },
+            { source: 'photo_3', target: 'time_3' },
+            { source: 'photo_4', target: 'time_3' },
+            { source: 'photo_5', target: 'time_4' },
+            { source: 'photo_6', target: 'time_4' },
+            { source: 'photo_7', target: 'time_5' },
+            { source: 'photo_8', target: 'time_5' },
+            { source: 'photo_9', target: 'time_6' },
+            { source: 'photo_10', target: 'time_6' },
+            { source: 'photo_11', target: 'time_7' },
+            { source: 'photo_12', target: 'time_7' },
+            { source: 'photo_13', target: 'time_2' },
+            { source: 'photo_14', target: 'time_2' },
+            { source: 'photo_15', target: 'time_2' },
+            { source: 'photo_16', target: 'time_3' },
+            { source: 'photo_17', target: 'time_3' },
+            { source: 'photo_18', target: 'time_8' },
+            { source: 'photo_19', target: 'time_8' },
+            { source: 'photo_20', target: 'time_8' },
+            { source: 'photo_21', target: 'time_9' },
+            { source: 'photo_22', target: 'time_9' },
+            { source: 'photo_23', target: 'time_10' },
+            { source: 'photo_24', target: 'time_10' },
+            
+            // Photo-Tag
+            { source: 'photo_1', target: 'tag_1' },
+            { source: 'photo_1', target: 'tag_2' },
+            { source: 'photo_2', target: 'tag_12' },
+            { source: 'photo_3', target: 'tag_5' },
+            { source: 'photo_4', target: 'tag_3' },
+            { source: 'photo_5', target: 'tag_9' },
+            { source: 'photo_6', target: 'tag_1' },
+            { source: 'photo_6', target: 'tag_6' },
+            { source: 'photo_7', target: 'tag_1' },
+            { source: 'photo_8', target: 'tag_4' },
+            { source: 'photo_9', target: 'tag_1' },
+            { source: 'photo_10', target: 'tag_3' },
+            { source: 'photo_11', target: 'tag_14' },
+            { source: 'photo_12', target: 'tag_8' },
+            { source: 'photo_13', target: 'tag_5' },
+            { source: 'photo_14', target: 'tag_12' },
+            { source: 'photo_15', target: 'tag_10' },
+            { source: 'photo_16', target: 'tag_12' },
+            { source: 'photo_17', target: 'tag_9' },
+            { source: 'photo_18', target: 'tag_5' },
+            { source: 'photo_18', target: 'tag_16' },
+            { source: 'photo_19', target: 'tag_11' },
+            { source: 'photo_20', target: 'tag_5' },
+            { source: 'photo_21', target: 'tag_11' },
+            { source: 'photo_22', target: 'tag_12' },
+            { source: 'photo_23', target: 'tag_14' },
+            { source: 'photo_24', target: 'tag_13' },
+            
+            // Files
+            { source: 'file_1', target: 'place_1' },
+            { source: 'file_1', target: 'place_2' },
+            { source: 'file_2', target: 'place_3' },
+            { source: 'file_2', target: 'person_4' },
+            { source: 'file_3', target: 'tag_2' },
+            { source: 'file_4', target: 'tag_8' },
+            { source: 'file_5', target: 'place_7' },
+            { source: 'file_6', target: 'place_10' },
+            { source: 'file_6', target: 'place_11' },
+            { source: 'file_6', target: 'place_12' },
+            { source: 'file_6', target: 'place_13' },
+            { source: 'file_7', target: 'tag_2' },
+            { source: 'file_8', target: 'tag_2' },
+            { source: 'file_9', target: 'tag_2' },
+            { source: 'file_10', target: 'person_1' },
+            { source: 'file_10', target: 'person_2' },
+            
+            // Person-Person
+            { source: 'person_1', target: 'person_7' },
+            { source: 'person_1', target: 'person_8' },
+            { source: 'person_2', target: 'person_5' },
+            { source: 'person_7', target: 'person_8' },
+            { source: 'person_7', target: 'person_15' },
+            { source: 'person_14', target: 'person_1' },
+            
+            // Place clusters
+            { source: 'place_1', target: 'place_2' },
+            { source: 'place_6', target: 'place_7' },
+            { source: 'place_10', target: 'place_11' },
+            { source: 'place_13', target: 'place_14' },
+            { source: 'place_16', target: 'place_17' },
+            
+            // Tag relationships
+            { source: 'tag_1', target: 'tag_3' },
+            { source: 'tag_2', target: 'tag_13' },
+            { source: 'tag_9', target: 'tag_14' },
+            { source: 'tag_10', target: 'tag_13' },
+            { source: 'tag_5', target: 'tag_11' },
+            
+            // Time groupings
+            { source: 'time_1', target: 'time_11' },
+            { source: 'time_2', target: 'time_11' },
+            { source: 'time_3', target: 'time_11' },
+            { source: 'time_8', target: 'time_12' },
+            { source: 'time_9', target: 'time_12' },
+            { source: 'time_10', target: 'time_12' },
+        ];
+
+        // ============ CONFIG ============
+        const colorMap = {
+            photo: 0x0A84FF,
+            person: 0x30D158,
+            place: 0xFF9F0A,
+            time: 0xFF375F,
+            tag: 0xBF5AF2,
+            file: 0x64D2FF
+        };
+
+        const colorMapCSS = {
+            photo: '#0A84FF',
+            person: '#30D158',
+            place: '#FF9F0A',
+            time: '#FF375F',
+            tag: '#BF5AF2',
+            file: '#64D2FF'
+        };
+
+        const sizeMap = {
+            photo: 10,
+            person: 7,
+            place: 6,
+            time: 5,
+            tag: 4,
+            file: 6
+        };
+
+        // ============ THREE.JS ============
+        let scene, camera, renderer;
+        let nodeObjects = [];
+        let linkObjects = [];
+        let labelElements = [];
+        let raycaster, mouse;
+        const nodeMap = new Map();
+        const textureLoader = new THREE.TextureLoader();
+        const loadedTextures = new Map();
+
+        function init() {
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 80, 280);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x000000, 0);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            createEnvironment();
+            
+            preloadTextures().then(() => {
+                createNodes();
+                createLinks();
+                createLabels();
+                applyForceLayout();
+                
+                setTimeout(() => {
+                    document.getElementById('loading').classList.add('hidden');
+                }, 800);
+            });
+
+            setupControls();
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('click', onClick);
+
+            document.getElementById('node-count').textContent = nodes.length;
+            document.getElementById('link-count').textContent = links.length;
+            document.getElementById('photo-count').textContent = nodes.filter(n => n.type === 'photo').length;
+
+            animate();
+        }
+
+        function preloadTextures() {
+            const photoNodes = nodes.filter(n => n.type === 'photo' && n.image);
+            const promises = photoNodes.map(node => {
+                return new Promise((resolve) => {
+                    textureLoader.load(
+                        node.image,
+                        (texture) => {
+                            loadedTextures.set(node.id, texture);
+                            resolve();
+                        },
+                        undefined,
+                        () => resolve()
+                    );
+                });
+            });
+            return Promise.all(promises);
+        }
+
+        function createEnvironment() {
+            // Soft ambient light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            // Key light
+            const keyLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            keyLight.position.set(100, 100, 50);
+            scene.add(keyLight);
+
+            // Fill light with color
+            const fillLight = new THREE.PointLight(0x0A84FF, 0.3, 400);
+            fillLight.position.set(-100, 50, 100);
+            scene.add(fillLight);
+
+            const fillLight2 = new THREE.PointLight(0xBF5AF2, 0.2, 400);
+            fillLight2.position.set(100, -50, -100);
+            scene.add(fillLight2);
+
+            // Subtle particles
+            const particleCount = 200;
+            const positions = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 500;
+                positions[i + 1] = (Math.random() - 0.5) * 500;
+                positions[i + 2] = (Math.random() - 0.5) * 500;
+            }
+            const particleGeometry = new THREE.BufferGeometry();
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.8,
+                transparent: true,
+                opacity: 0.3
+            });
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+        }
+
+        function createNodes() {
+            nodes.forEach((node) => {
+                let mesh;
+                const size = sizeMap[node.type];
+                const color = colorMap[node.type];
+
+                if (node.type === 'photo' && loadedTextures.has(node.id)) {
+                    // Photo: Rounded rectangle with image
+                    const texture = loadedTextures.get(node.id);
+                    const geometry = new THREE.PlaneGeometry(size * 2, size * 1.5);
+                    const material = new THREE.MeshStandardMaterial({
+                        map: texture,
+                        side: THREE.DoubleSide,
+                        roughness: 0.3,
+                        metalness: 0.1
+                    });
+                    mesh = new THREE.Mesh(geometry, material);
+
+                    // Border
+                    const borderGeometry = new THREE.PlaneGeometry(size * 2 + 0.5, size * 1.5 + 0.5);
+                    const borderMaterial = new THREE.MeshBasicMaterial({
+                        color: color,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const border = new THREE.Mesh(borderGeometry, borderMaterial);
+                    border.position.z = -0.1;
+                    mesh.add(border);
+                } else {
+                    // Other nodes: Glass-like spheres
+                    const geometry = new THREE.SphereGeometry(size, 32, 32);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: color,
+                        roughness: 0.1,
+                        metalness: 0.2,
+                        transparent: true,
+                        opacity: 0.85
+                    });
+                    mesh = new THREE.Mesh(geometry, material);
+
+                    // Inner glow
+                    const glowGeometry = new THREE.SphereGeometry(size * 0.6, 16, 16);
+                    const glowMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                    mesh.add(glow);
+                }
+
+                mesh.position.set(
+                    (Math.random() - 0.5) * 200,
+                    (Math.random() - 0.5) * 200,
+                    (Math.random() - 0.5) * 200
+                );
+
+                mesh.userData = { ...node };
+                nodeObjects.push(mesh);
+                nodeMap.set(node.id, mesh);
+                scene.add(mesh);
+            });
+        }
+
+        function createLinks() {
+            const material = new THREE.LineBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.15
+            });
+
+            links.forEach(link => {
+                const sourceNode = nodeMap.get(link.source);
+                const targetNode = nodeMap.get(link.target);
+                
+                if (sourceNode && targetNode) {
+                    const geometry = new THREE.BufferGeometry();
+                    const positions = new Float32Array(6);
+                    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    
+                    const line = new THREE.Line(geometry, material.clone());
+                    line.userData = { source: link.source, target: link.target };
+                    linkObjects.push(line);
+                    scene.add(line);
+                }
+            });
+        }
+
+        function createLabels() {
+            const container = document.getElementById('labels-container');
+            
+            nodes.forEach((node) => {
+                const label = document.createElement('div');
+                label.className = 'node-label-3d';
+                label.innerHTML = `${node.emoji || ''} ${node.label}`;
+                label.dataset.nodeId = node.id;
+                container.appendChild(label);
+                labelElements.push(label);
+            });
+        }
+
+        function updateLabels() {
+            const halfWidth = window.innerWidth / 2;
+            const halfHeight = window.innerHeight / 2;
+
+            labelElements.forEach((label) => {
+                const nodeId = label.dataset.nodeId;
+                const mesh = nodeMap.get(nodeId);
+                
+                if (mesh && mesh.visible) {
+                    const vector = mesh.position.clone();
+                    vector.project(camera);
+                    
+                    const x = (vector.x * halfWidth) + halfWidth;
+                    const y = -(vector.y * halfHeight) + halfHeight;
+                    
+                    // Only show labels within view and not too far
+                    const distance = camera.position.distanceTo(mesh.position);
+                    const inView = vector.z < 1 && distance < 250;
+                    
+                    if (inView) {
+                        label.style.left = x + 'px';
+                        label.style.top = (y + sizeMap[mesh.userData.type] * 3 + 20) + 'px';
+                        label.classList.add('visible');
+                    } else {
+                        label.classList.remove('visible');
+                    }
+                } else {
+                    label.classList.remove('visible');
+                }
+            });
+        }
+
+        function applyForceLayout() {
+            const iterations = 80;
+            const repulsion = 600;
+            const attraction = 0.04;
+            const damping = 0.85;
+
+            nodeObjects.forEach(node => {
+                node.userData.velocity = new THREE.Vector3();
+            });
+
+            for (let iter = 0; iter < iterations; iter++) {
+                for (let i = 0; i < nodeObjects.length; i++) {
+                    for (let j = i + 1; j < nodeObjects.length; j++) {
+                        const nodeA = nodeObjects[i];
+                        const nodeB = nodeObjects[j];
+                        
+                        const diff = new THREE.Vector3().subVectors(nodeA.position, nodeB.position);
+                        const dist = diff.length() || 1;
+                        const force = repulsion / (dist * dist);
+                        
+                        diff.normalize().multiplyScalar(force);
+                        nodeA.userData.velocity.add(diff);
+                        nodeB.userData.velocity.sub(diff);
+                    }
+                }
+
+                links.forEach(link => {
+                    const sourceNode = nodeMap.get(link.source);
+                    const targetNode = nodeMap.get(link.target);
+                    
+                    if (sourceNode && targetNode) {
+                        const diff = new THREE.Vector3().subVectors(targetNode.position, sourceNode.position);
+                        const force = diff.length() * attraction;
+                        
+                        diff.normalize().multiplyScalar(force);
+                        sourceNode.userData.velocity.add(diff);
+                        targetNode.userData.velocity.sub(diff);
+                    }
+                });
+
+                nodeObjects.forEach(node => {
+                    node.userData.velocity.multiplyScalar(damping);
+                    node.position.add(node.userData.velocity);
+                });
+            }
+
+            updateLinkPositions();
+        }
+
+        function updateLinkPositions() {
+            linkObjects.forEach(line => {
+                const sourceNode = nodeMap.get(line.userData.source);
+                const targetNode = nodeMap.get(line.userData.target);
+                
+                if (sourceNode && targetNode) {
+                    const positions = line.geometry.attributes.position.array;
+                    positions[0] = sourceNode.position.x;
+                    positions[1] = sourceNode.position.y;
+                    positions[2] = sourceNode.position.z;
+                    positions[3] = targetNode.position.x;
+                    positions[4] = targetNode.position.y;
+                    positions[5] = targetNode.position.z;
+                    line.geometry.attributes.position.needsUpdate = true;
+                }
+            });
+        }
+
+        // ============ CONTROLS ============
+        let isMouseDown = false;
+        let prevMouseX = 0, prevMouseY = 0;
+        let cameraRadius = 280;
+        let cameraTheta = 0;
+        let cameraPhi = Math.PI / 3;
+        let targetX = 0, targetY = 0, targetZ = 0;
+
+        function setupControls() {
+            const canvas = renderer.domElement;
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    isMouseDown = true;
+                    prevMouseX = e.clientX;
+                    prevMouseY = e.clientY;
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                isMouseDown = false;
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                isMouseDown = false;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isMouseDown) {
+                    const deltaX = e.clientX - prevMouseX;
+                    const deltaY = e.clientY - prevMouseY;
+
+                    cameraTheta -= deltaX * 0.005;
+                    cameraPhi -= deltaY * 0.005;
+                    cameraPhi = Math.max(0.2, Math.min(Math.PI - 0.2, cameraPhi));
+
+                    prevMouseX = e.clientX;
+                    prevMouseY = e.clientY;
+                }
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                cameraRadius += e.deltaY * 0.3;
+                cameraRadius = Math.max(80, Math.min(500, cameraRadius));
+            });
+
+            document.getElementById('zoom-in').addEventListener('click', () => {
+                cameraRadius = Math.max(80, cameraRadius - 40);
+            });
+
+            document.getElementById('zoom-out').addEventListener('click', () => {
+                cameraRadius = Math.min(500, cameraRadius + 40);
+            });
+
+            document.getElementById('reset-view').addEventListener('click', () => {
+                cameraRadius = 280;
+                cameraTheta = 0;
+                cameraPhi = Math.PI / 3;
+                targetX = targetY = targetZ = 0;
+            });
+        }
+
+        function updateCamera() {
+            camera.position.x = targetX + cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+            camera.position.y = targetY + cameraRadius * Math.cos(cameraPhi);
+            camera.position.z = targetZ + cameraRadius * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+            camera.lookAt(targetX, targetY, targetZ);
+        }
+
+        // ============ INTERACTION ============
+        let hoveredNode = null;
+
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(nodeObjects);
+
+            const tooltip = document.getElementById('tooltip');
+
+            if (intersects.length > 0) {
+                const obj = intersects[0].object;
+                if (obj.userData.id) {
+                    hoveredNode = obj;
+                    document.body.style.cursor = 'pointer';
+                    
+                    tooltip.querySelector('.tooltip-title').textContent = obj.userData.label;
+                    tooltip.querySelector('.tooltip-type').textContent = obj.userData.type + (obj.userData.desc ? ' · ' + obj.userData.desc : '');
+                    tooltip.style.left = (event.clientX + 16) + 'px';
+                    tooltip.style.top = (event.clientY + 16) + 'px';
+                    tooltip.classList.add('visible');
+
+                    highlightConnections(obj.userData.id);
+                }
+            } else {
+                hoveredNode = null;
+                document.body.style.cursor = 'default';
+                tooltip.classList.remove('visible');
+                resetHighlight();
+            }
+        }
+
+        function onClick() {
+            if (hoveredNode) {
+                showDetailPanel(hoveredNode.userData);
+            }
+        }
+
+        function highlightConnections(nodeId) {
+            const connectedIds = new Set([nodeId]);
+            links.forEach(l => {
+                if (l.source === nodeId) connectedIds.add(l.target);
+                if (l.target === nodeId) connectedIds.add(l.source);
+            });
+
+            nodeObjects.forEach(obj => {
+                const isConnected = connectedIds.has(obj.userData.id);
+                obj.material.opacity = isConnected ? 1 : 0.15;
+            });
+
+            linkObjects.forEach(line => {
+                const isConnected = line.userData.source === nodeId || line.userData.target === nodeId;
+                line.material.opacity = isConnected ? 0.6 : 0.03;
+                if (isConnected) {
+                    line.material.color.setHex(colorMap[nodeMap.get(nodeId).userData.type]);
+                }
+            });
+        }
+
+        function resetHighlight() {
+            nodeObjects.forEach(obj => {
+                obj.material.opacity = obj.userData.type === 'photo' ? 1 : 0.85;
+            });
+
+            linkObjects.forEach(line => {
+                line.material.opacity = 0.15;
+                line.material.color.setHex(0xffffff);
+            });
+        }
+
+        // ============ DETAIL PANEL ============
+        function showDetailPanel(data) {
+            const panel = document.getElementById('detail-panel');
+            const content = document.getElementById('detail-content');
+
+            const connections = [];
+            links.forEach(l => {
+                if (l.source === data.id) {
+                    const n = nodes.find(node => node.id === l.target);
+                    if (n) connections.push(n);
+                }
+                if (l.target === data.id) {
+                    const n = nodes.find(node => node.id === l.source);
+                    if (n) connections.push(n);
+                }
+            });
+
+            let html = `
+                <div class="detail-header">
+                    <div class="detail-icon ${data.type}">
+                        ${data.type === 'photo' ? '📷' : data.emoji || '◎'}
+                    </div>
+                    <div class="detail-title">${data.label}</div>
+                    <div class="detail-subtitle">${data.type === 'person' && data.desc ? data.desc : data.type}</div>
+                </div>
+            `;
+
+            if (data.type === 'photo' && data.image) {
+                html += `<div class="detail-preview"><img src="${data.image}" alt="${data.label}"></div>`;
+            }
+
+            if (data.date || data.location) {
+                html += `<div class="detail-section"><div class="detail-section-title">정보</div><div class="metadata-grid">`;
+                if (data.date) html += `<div class="metadata-row"><span class="metadata-label">날짜</span><span class="metadata-value">${data.date}</span></div>`;
+                if (data.location) html += `<div class="metadata-row"><span class="metadata-label">장소</span><span class="metadata-value">${data.location}</span></div>`;
+                html += `</div></div>`;
+            }
+
+            if (connections.length > 0) {
+                html += `<div class="detail-section"><div class="detail-section-title">연결된 항목 (${connections.length})</div><div class="connection-list">`;
+                connections.forEach(c => {
+                    html += `<div class="connection-item" onclick="focusNode('${c.id}')"><span class="connection-dot" style="background:${colorMapCSS[c.type]}"></span>${c.emoji || ''} ${c.label}</div>`;
+                });
+                html += `</div></div>`;
+            }
+
+            content.innerHTML = html;
+            panel.classList.add('visible');
+        }
+
+        document.getElementById('detail-close').addEventListener('click', () => {
+            document.getElementById('detail-panel').classList.remove('visible');
+        });
+
+        window.focusNode = function(nodeId) {
+            const mesh = nodeMap.get(nodeId);
+            if (mesh) {
+                targetX = mesh.position.x;
+                targetY = mesh.position.y;
+                targetZ = mesh.position.z;
+                cameraRadius = 120;
+                showDetailPanel(mesh.userData);
+            }
+        };
+
+        // ============ FILTERS ============
+        const activeFilters = new Set(['photo', 'person', 'place', 'time', 'tag', 'file']);
+
+        document.querySelectorAll('.filter-pill').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const type = this.dataset.type;
+                
+                if (type === 'all') {
+                    if (activeFilters.size === 6) {
+                        activeFilters.clear();
+                        document.querySelectorAll('.filter-pill:not([data-type="all"])').forEach(b => b.classList.remove('active'));
+                    } else {
+                        ['photo', 'person', 'place', 'time', 'tag', 'file'].forEach(t => activeFilters.add(t));
+                        document.querySelectorAll('.filter-pill').forEach(b => b.classList.add('active'));
+                    }
+                } else {
+                    if (activeFilters.has(type)) {
+                        activeFilters.delete(type);
+                        this.classList.remove('active');
+                    } else {
+                        activeFilters.add(type);
+                        this.classList.add('active');
+                    }
+                }
+                
+                applyFilters();
+            });
+        });
+
+        function applyFilters() {
+            nodeObjects.forEach(obj => {
+                obj.visible = activeFilters.has(obj.userData.type);
+            });
+
+            linkObjects.forEach(line => {
+                const sourceNode = nodeMap.get(line.userData.source);
+                const targetNode = nodeMap.get(line.userData.target);
+                line.visible = sourceNode?.visible && targetNode?.visible;
+            });
+        }
+
+        // ============ SEARCH ============
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase();
+            
+            if (query === '') {
+                nodeObjects.forEach(obj => {
+                    if (activeFilters.has(obj.userData.type)) {
+                        obj.visible = true;
+                    }
+                });
+                return;
+            }
+
+            nodeObjects.forEach(obj => {
+                const matches = obj.userData.label.toLowerCase().includes(query);
+                obj.visible = matches && activeFilters.has(obj.userData.type);
+            });
+
+            linkObjects.forEach(line => {
+                const sourceNode = nodeMap.get(line.userData.source);
+                const targetNode = nodeMap.get(line.userData.target);
+                line.visible = sourceNode?.visible && targetNode?.visible;
+            });
+        });
+
+        // ============ ANIMATE ============
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updateCamera();
+            updateLabels();
+            
+            // Subtle float animation
+            const time = Date.now() * 0.0005;
+            nodeObjects.forEach((obj, i) => {
+                if (obj.userData.type === 'photo') {
+                    obj.rotation.y = Math.sin(time + i * 0.3) * 0.1;
+                }
+                obj.position.y += Math.sin(time * 2 + i * 0.5) * 0.015;
+            });
+            
+            updateLinkPositions();
+            
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    </script>
+</body>
+</html>
