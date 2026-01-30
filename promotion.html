@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Graph — Galaxy 생태계를 위한 공간 기억 경험</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Samsung Galaxy Color System */
+            --galaxy-black: #000000;
+            --galaxy-dark: #0a0a0a;
+            --galaxy-gray-900: #121212;
+            --galaxy-gray-800: #1a1a1a;
+            --galaxy-gray-700: #2a2a2a;
+            --galaxy-gray-600: #3a3a3a;
+            --galaxy-gray-400: #888888;
+            --galaxy-gray-200: #cccccc;
+            --galaxy-white: #ffffff;
+            
+            /* Samsung Accent Colors */
+            --samsung-blue: #1428a0;
+            --samsung-blue-light: #4285f4;
+            --galaxy-gradient-start: #1428a0;
+            --galaxy-gradient-end: #6e2eb8;
+            
+            /* Feature Colors */
+            --color-photo: #4fc3f7;
+            --color-person: #81c784;
+            --color-place: #ffb74d;
+            --color-time: #f06292;
+            --color-tag: #ba68c8;
+            --color-file: #4dd0e1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--galaxy-black);
+            color: var(--galaxy-white);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 20px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-logo span {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+        }
+
+        .nav-links a {
+            color: var(--galaxy-gray-200);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--galaxy-white);
+        }
+
+        .nav-cta {
+            padding: 12px 28px;
+            background: var(--galaxy-white);
+            color: var(--galaxy-black);
+            border: none;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-cta:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 32px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 120px 60px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+        }
+
+        .hero-bg::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1200px;
+            height: 1200px;
+            background: radial-gradient(circle, rgba(20, 40, 160, 0.3) 0%, transparent 60%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        .hero-bg::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            right: -10%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(110, 46, 184, 0.2) 0%, transparent 60%);
+            animation: pulse 10s ease-in-out infinite 2s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.5; }
+            50% { transform: translateX(-50%) scale(1.1); opacity: 0.8; }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--galaxy-gray-200);
+            margin-bottom: 32px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero-title {
+            font-size: clamp(48px, 8vw, 80px);
+            font-weight: 900;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.8s ease-out 0.1s backwards;
+        }
+
+        .hero-title .gradient-text {
+            background: linear-gradient(135deg, #4fc3f7 0%, #ba68c8 50%, #f06292 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(18px, 2.5vw, 22px);
+            font-weight: 400;
+            color: var(--galaxy-gray-400);
+            max-width: 600px;
+            margin: 0 auto 48px;
+            line-height: 1.7;
+            animation: fadeInUp 0.8s ease-out 0.2s backwards;
+        }
+
+        .hero-cta-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.8s ease-out 0.3s backwards;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 36px;
+            background: var(--galaxy-white);
+            color: var(--galaxy-black);
+            border: none;
+            border-radius: 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 48px rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-primary svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 36px;
+            background: transparent;
+            color: var(--galaxy-white);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 28px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Device Showcase */
+        .hero-devices {
+            margin-top: 80px;
+            position: relative;
+            width: 100%;
+            max-width: 1100px;
+            animation: fadeInUp 1s ease-out 0.5s backwards;
+        }
+
+        .device-frame {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: var(--galaxy-gray-900);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            box-shadow: 
+                0 0 0 1px rgba(255, 255, 255, 0.05),
+                0 32px 64px rgba(0, 0, 0, 0.5),
+                0 0 120px rgba(20, 40, 160, 0.2);
+        }
+
+        .device-screen {
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 30% 30%, rgba(79, 195, 247, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 70%, rgba(186, 104, 200, 0.1) 0%, transparent 50%),
+                linear-gradient(135deg, #0a0a12 0%, #12121a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .device-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(79, 195, 247, 0.4) 0%, transparent 2%),
+                radial-gradient(circle at 80% 20%, rgba(129, 199, 132, 0.4) 0%, transparent 2%),
+                radial-gradient(circle at 60% 60%, rgba(255, 183, 77, 0.4) 0%, transparent 2%),
+                radial-gradient(circle at 30% 70%, rgba(240, 98, 146, 0.4) 0%, transparent 2%),
+                radial-gradient(circle at 75% 75%, rgba(186, 104, 200, 0.4) 0%, transparent 2%),
+                radial-gradient(circle at 45% 45%, rgba(77, 208, 225, 0.4) 0%, transparent 2%),
+                radial-gradient(circle at 15% 55%, rgba(79, 195, 247, 0.3) 0%, transparent 1.5%),
+                radial-gradient(circle at 85% 45%, rgba(129, 199, 132, 0.3) 0%, transparent 1.5%),
+                radial-gradient(circle at 50% 20%, rgba(255, 183, 77, 0.3) 0%, transparent 1.5%),
+                radial-gradient(circle at 25% 85%, rgba(240, 98, 146, 0.3) 0%, transparent 1.5%);
+            animation: floatNodes 20s ease-in-out infinite;
+        }
+
+        @keyframes floatNodes {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(10px, -10px); }
+            50% { transform: translate(-5px, 5px); }
+            75% { transform: translate(5px, 10px); }
+        }
+
+        .device-label {
+            position: absolute;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: var(--galaxy-gray-400);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Compatible Devices */
+        .compatible-devices {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-top: 100px;
+            animation: fadeInUp 0.8s ease-out 0.7s backwards;
+        }
+
+        .device-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .device-icon:hover {
+            opacity: 1;
+        }
+
+        .device-icon svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--galaxy-gray-400);
+        }
+
+        .device-icon span {
+            font-size: 12px;
+            color: var(--galaxy-gray-400);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 160px 60px;
+            position: relative;
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 100px;
+        }
+
+        .section-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--samsung-blue-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: clamp(36px, 5vw, 52px);
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 20px;
+        }
+
+        .section-desc {
+            font-size: 18px;
+            color: var(--galaxy-gray-400);
+            line-height: 1.7;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: var(--galaxy-gray-900);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            padding: 40px;
+            transition: all 0.4s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.4);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 24px;
+        }
+
+        .feature-icon.photo { background: linear-gradient(135deg, var(--color-photo), #0288d1); }
+        .feature-icon.person { background: linear-gradient(135deg, var(--color-person), #388e3c); }
+        .feature-icon.place { background: linear-gradient(135deg, var(--color-place), #f57c00); }
+        .feature-icon.time { background: linear-gradient(135deg, var(--color-time), #c2185b); }
+        .feature-icon.tag { background: linear-gradient(135deg, var(--color-tag), #7b1fa2); }
+        .feature-icon.ai { background: linear-gradient(135deg, var(--samsung-blue-light), var(--galaxy-gradient-end)); }
+
+        .feature-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+
+        .feature-desc {
+            font-size: 15px;
+            color: var(--galaxy-gray-400);
+            line-height: 1.7;
+        }
+
+        /* Experience Section */
+        .experience {
+            padding: 160px 60px;
+            background: var(--galaxy-gray-900);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .experience::before {
+            content: '';
+            position: absolute;
+            top: -200px;
+            right: -200px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(20, 40, 160, 0.15) 0%, transparent 60%);
+        }
+
+        .experience-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .experience-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .experience-visual {
+            position: relative;
+        }
+
+        .xr-mockup {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: linear-gradient(135deg, var(--galaxy-gray-800) 0%, var(--galaxy-gray-700) 100%);
+            border-radius: 32px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5);
+        }
+
+        .xr-mockup::before {
+            content: '';
+            position: absolute;
+            inset: 20px;
+            border-radius: 20px;
+            background: 
+                radial-gradient(ellipse at 30% 40%, rgba(79, 195, 247, 0.2) 0%, transparent 40%),
+                radial-gradient(ellipse at 70% 60%, rgba(186, 104, 200, 0.15) 0%, transparent 40%),
+                linear-gradient(135deg, #0f0f18 0%, #1a1a28 100%);
+        }
+
+        .xr-mockup::after {
+            content: 'Memory Graph XR';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 0.05em;
+        }
+
+        .floating-badge {
+            position: absolute;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .floating-badge.badge-1 {
+            top: -20px;
+            right: 40px;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .floating-badge.badge-2 {
+            bottom: 40px;
+            left: -20px;
+            animation: float 4s ease-in-out infinite 1s;
+        }
+
+        .floating-badge.badge-3 {
+            bottom: -20px;
+            right: 60px;
+            animation: float 4s ease-in-out infinite 2s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Stats Section */
+        .stats {
+            padding: 120px 60px;
+            background: var(--galaxy-black);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .stat-item {
+            padding: 40px;
+        }
+
+        .stat-value {
+            font-size: clamp(48px, 6vw, 72px);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--galaxy-white) 0%, var(--galaxy-gray-400) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--galaxy-gray-400);
+            font-weight: 500;
+        }
+
+        /* Ecosystem Section */
+        .ecosystem {
+            padding: 160px 60px;
+            background: linear-gradient(180deg, var(--galaxy-black) 0%, var(--galaxy-gray-900) 100%);
+        }
+
+        .ecosystem-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 24px;
+            max-width: 1000px;
+            margin: 60px auto 0;
+        }
+
+        .ecosystem-item {
+            aspect-ratio: 1;
+            background: var(--galaxy-gray-800);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            transition: all 0.3s;
+        }
+
+        .ecosystem-item:hover {
+            background: var(--galaxy-gray-700);
+            transform: translateY(-4px);
+        }
+
+        .ecosystem-item svg {
+            width: 48px;
+            height: 48px;
+            fill: var(--galaxy-white);
+            opacity: 0.8;
+        }
+
+        .ecosystem-item span {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--galaxy-gray-200);
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 160px 60px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(20, 40, 160, 0.2) 0%, transparent 60%);
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .cta-title {
+            font-size: clamp(36px, 5vw, 56px);
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 24px;
+        }
+
+        .cta-desc {
+            font-size: 18px;
+            color: var(--galaxy-gray-400);
+            margin-bottom: 48px;
+            line-height: 1.7;
+        }
+
+        .store-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .store-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 32px;
+            background: var(--galaxy-gray-800);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            text-decoration: none;
+            color: var(--galaxy-white);
+            transition: all 0.3s;
+        }
+
+        .store-btn:hover {
+            background: var(--galaxy-gray-700);
+            transform: translateY(-2px);
+        }
+
+        .store-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+        }
+
+        .store-btn .store-text {
+            text-align: left;
+        }
+
+        .store-btn .store-text span {
+            display: block;
+            font-size: 11px;
+            color: var(--galaxy-gray-400);
+        }
+
+        .store-btn .store-text strong {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .footer-logo svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 32px;
+        }
+
+        .footer-links a {
+            color: var(--galaxy-gray-400);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--galaxy-white);
+        }
+
+        .footer-copy {
+            font-size: 13px;
+            color: var(--galaxy-gray-600);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .experience-grid {
+                grid-template-columns: 1fr;
+                gap: 60px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .ecosystem-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 16px 24px;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .hero {
+                padding: 100px 24px 60px;
+            }
+            
+            .features,
+            .experience,
+            .stats,
+            .ecosystem,
+            .cta {
+                padding: 100px 24px;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+            }
+            
+            .ecosystem-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            footer {
+                flex-direction: column;
+                gap: 24px;
+                text-align: center;
+            }
+            
+            .compatible-devices {
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-logo">
+            <svg viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="14" stroke="white" stroke-width="2"/>
+                <circle cx="10" cy="12" r="3" fill="#4fc3f7"/>
+                <circle cx="22" cy="12" r="2" fill="#81c784"/>
+                <circle cx="16" cy="22" r="2.5" fill="#ba68c8"/>
+                <line x1="10" y1="12" x2="22" y2="12" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+                <line x1="10" y1="12" x2="16" y2="22" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+                <line x1="22" y1="12" x2="16" y2="22" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            </svg>
+            <span>Memory Graph</span>
+        </div>
+        <div class="nav-links">
+            <a href="#features">기능</a>
+            <a href="#experience">경험</a>
+            <a href="#ecosystem">생태계</a>
+            <a href="#download">다운로드</a>
+        </div>
+        <button class="nav-cta">Galaxy Store</button>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="dot"></span>
+                Galaxy 생태계 전용
+            </div>
+            <h1 class="hero-title">
+                당신의 기억을<br>
+                <span class="gradient-text">공간으로 연결하다</span>
+            </h1>
+            <p class="hero-subtitle">
+                사진, 장소, 사람, 시간을 3D 공간에서 의미 있게 연결합니다.<br>
+                Galaxy 디바이스 간 끊김 없는 동기화로 어디서든 기억을 탐색하세요.
+            </p>
+            <div class="hero-cta-group">
+                <a href="#download" class="btn-primary">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.5 12.5L12 18l-5.5-5.5 1.4-1.4 3.1 3.1V4h2v10.2l3.1-3.1 1.4 1.4z"/>
+                        <path d="M19 19H5v-2h14v2z"/>
+                    </svg>
+                    지금 다운로드
+                </a>
+                <a href="#experience" class="btn-secondary">경험 살펴보기</a>
+            </div>
+        </div>
+
+        <div class="hero-devices">
+            <div class="device-frame">
+                <div class="device-screen"></div>
+            </div>
+            <div class="device-label">
+                <span>Galaxy Tab S10 Ultra에서 실행 중</span>
+            </div>
+        </div>
+
+        <div class="compatible-devices">
+            <div class="device-icon">
+                <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="12" y1="18" x2="12" y2="18.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <span>Phone</span>
+            </div>
+            <div class="device-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="8" y1="20" x2="16" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span>Tablet</span>
+            </div>
+            <div class="device-icon">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                <span>Watch</span>
+            </div>
+            <div class="device-icon">
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M2 12c0 4 4.5 8 10 8s10-4 10-8" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                <span>Ring</span>
+            </div>
+            <div class="device-icon">
+                <svg viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="7" cy="12" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                <span>Buds</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-header">
+            <div class="section-label">Features</div>
+            <h2 class="section-title">모든 기억이<br>연결되는 순간</h2>
+            <p class="section-desc">사진 속 메타데이터를 기반으로 장소, 인물, 시간, 태그를 자동으로 분석하고 3D 공간에서 의미 있는 관계로 시각화합니다.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon photo">📷</div>
+                <h3 class="feature-title">공간 사진 노드</h3>
+                <p class="feature-desc">갤러리의 사진이 EXIF 메타데이터와 함께 3D 공간에 배치됩니다. 확대하면 고해상도 이미지를 바로 확인할 수 있습니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon person">👥</div>
+                <h3 class="feature-title">인물 자동 인식</h3>
+                <p class="feature-desc">Galaxy AI가 사진 속 얼굴을 분석하여 인물 노드를 자동 생성합니다. 연락처와 연동하여 더 풍부한 컨텍스트를 제공합니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon place">📍</div>
+                <h3 class="feature-title">장소 클러스터링</h3>
+                <p class="feature-desc">GPS 데이터 기반으로 장소를 자동 그룹화합니다. 도쿄 여행, 회사, 집 등 의미 있는 장소별로 기억을 탐색하세요.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon time">📅</div>
+                <h3 class="feature-title">시간 축 네비게이션</h3>
+                <p class="feature-desc">월별, 분기별, 연도별로 기억을 탐색합니다. 타임라인 뷰와 그래프 뷰를 자유롭게 전환할 수 있습니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon tag">🏷️</div>
+                <h3 class="feature-title">스마트 태깅</h3>
+                <p class="feature-desc">음식, 여행, 가족 등 사진 내용을 AI가 자동으로 태깅합니다. 수동 태그 추가도 가능합니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon ai">✨</div>
+                <h3 class="feature-title">Galaxy AI 통합</h3>
+                <p class="feature-desc">On-device AI로 프라이버시를 보호하면서 강력한 분석을 수행합니다. 모든 처리는 당신의 Galaxy에서 이루어집니다.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Experience Section -->
+    <section class="experience" id="experience">
+        <div class="experience-grid">
+            <div class="experience-content">
+                <div class="section-label">Immersive Experience</div>
+                <h2 class="section-title">몰입형 3D 탐색</h2>
+                <p class="section-desc" style="margin-top: 20px; margin-bottom: 32px;">
+                    손가락으로 회전하고, 핀치로 확대하고, 탭으로 선택합니다. 직관적인 제스처로 수천 개의 기억을 공간에서 자유롭게 탐색하세요.
+                </p>
+                <ul style="list-style: none; display: flex; flex-direction: column; gap: 16px;">
+                    <li style="display: flex; align-items: center; gap: 12px; color: var(--galaxy-gray-200);">
+                        <span style="width: 8px; height: 8px; background: var(--color-photo); border-radius: 50%;"></span>
+                        Force-directed 그래프로 자연스러운 노드 배치
+                    </li>
+                    <li style="display: flex; align-items: center; gap: 12px; color: var(--galaxy-gray-200);">
+                        <span style="width: 8px; height: 8px; background: var(--color-person); border-radius: 50%;"></span>
+                        연결된 노드 하이라이팅으로 관계 시각화
+                    </li>
+                    <li style="display: flex; align-items: center; gap: 12px; color: var(--galaxy-gray-200);">
+                        <span style="width: 8px; height: 8px; background: var(--color-place); border-radius: 50%;"></span>
+                        실시간 검색 및 필터링
+                    </li>
+                    <li style="display: flex; align-items: center; gap: 12px; color: var(--galaxy-gray-200);">
+                        <span style="width: 8px; height: 8px; background: var(--color-tag); border-radius: 50%;"></span>
+                        다크 테마 및 One UI 디자인 언어 적용
+                    </li>
+                </ul>
+            </div>
+            <div class="experience-visual">
+                <div class="xr-mockup"></div>
+                <div class="floating-badge badge-1">
+                    <span style="width: 8px; height: 8px; background: var(--color-photo); border-radius: 50%;"></span>
+                    2,847 Photos
+                </div>
+                <div class="floating-badge badge-2">
+                    <span style="width: 8px; height: 8px; background: var(--color-person); border-radius: 50%;"></span>
+                    156 People
+                </div>
+                <div class="floating-badge badge-3">
+                    <span style="width: 8px; height: 8px; background: var(--color-place); border-radius: 50%;"></span>
+                    89 Places
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value">96+</div>
+                <div class="stat-label">노드 타입 조합</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">60fps</div>
+                <div class="stat-label">부드러운 렌더링</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">온디바이스 처리</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">∞</div>
+                <div class="stat-label">확장 가능한 연결</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ecosystem Section -->
+    <section class="ecosystem" id="ecosystem">
+        <div class="section-header">
+            <div class="section-label">Galaxy Ecosystem</div>
+            <h2 class="section-title">모든 Galaxy와 함께</h2>
+            <p class="section-desc">Samsung Cloud를 통해 모든 Galaxy 디바이스에서 동일한 기억 그래프를 경험하세요. 휴대폰에서 시작해 태블릿에서 이어가고, 워치에서 빠르게 확인합니다.</p>
+        </div>
+        <div class="ecosystem-grid">
+            <div class="ecosystem-item">
+                <svg viewBox="0 0 48 48"><rect x="12" y="4" width="24" height="40" rx="3" stroke="currentColor" stroke-width="2" fill="none"/><line x1="24" y1="38" x2="24" y2="38.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                <span>Galaxy S Series</span>
+            </div>
+            <div class="ecosystem-item">
+                <svg viewBox="0 0 48 48"><rect x="6" y="8" width="36" height="28" rx="3" stroke="currentColor" stroke-width="2" fill="none"/><line x1="18" y1="40" x2="30" y2="40" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <span>Galaxy Tab</span>
+            </div>
+            <div class="ecosystem-item">
+                <svg viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="36" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="6" width="20" height="36" rx="1" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                <span>Galaxy Fold</span>
+            </div>
+            <div class="ecosystem-item">
+                <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="16" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="24" cy="24" r="10" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                <span>Galaxy Watch</span>
+            </div>
+            <div class="ecosystem-item">
+                <svg viewBox="0 0 48 48"><ellipse cx="24" cy="24" rx="18" ry="8" stroke="currentColor" stroke-width="2" fill="none"/><path d="M6 24c0 8 8 16 18 16s18-8 18-16" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                <span>Galaxy Ring</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta" id="download">
+        <div class="cta-content">
+            <h2 class="cta-title">지금 시작하세요</h2>
+            <p class="cta-desc">Galaxy Store에서 Memory Graph를 무료로 다운로드하고, 당신의 기억을 새로운 차원에서 경험하세요.</p>
+            <div class="store-buttons">
+                <a href="#" class="store-btn">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    <div class="store-text">
+                        <span>다운로드</span>
+                        <strong>Galaxy Store</strong>
+                    </div>
+                </a>
+                <a href="#" class="store-btn">
+                    <svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+                    <div class="store-text">
+                        <span>GET IT ON</span>
+                        <strong>Google Play</strong>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">
+            <svg viewBox="0 0 32 32" fill="none" width="28" height="28">
+                <circle cx="16" cy="16" r="14" stroke="white" stroke-width="2"/>
+                <circle cx="10" cy="12" r="3" fill="#4fc3f7"/>
+                <circle cx="22" cy="12" r="2" fill="#81c784"/>
+                <circle cx="16" cy="22" r="2.5" fill="#ba68c8"/>
+            </svg>
+            Memory Graph
+        </div>
+        <div class="footer-links">
+            <a href="#">이용약관</a>
+            <a href="#">개인정보처리방침</a>
+            <a href="#">고객지원</a>
+            <a href="#">문의하기</a>
+        </div>
+        <div class="footer-copy">© 2025 Memory Graph. Samsung Galaxy Ecosystem App.</div>
+    </footer>
+
+    <script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.feature-card, .stat-item, .ecosystem-item').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease-out';
+            observer.observe(el);
+        });
+
+        // Nav background on scroll
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 100) {
+                nav.style.background = 'rgba(0, 0, 0, 0.95)';
+            } else {
+                nav.style.background = 'rgba(0, 0, 0, 0.8)';
+            }
+        });
+    </script>
+</body>
+</html>
