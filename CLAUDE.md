@@ -36,6 +36,7 @@ Access at `http://localhost:8000/index.html` or `http://localhost:8000/promotion
 The application builds a 3D force-directed graph with these core components:
 
 **Scene Hierarchy**:
+
 - Scene → Camera (PerspectiveCamera at 280 units radius)
 - Nodes: 96 mesh objects (photos as PlaneGeometry, others as SphereGeometry)
 - Links: Line objects connecting related nodes
@@ -43,6 +44,7 @@ The application builds a 3D force-directed graph with these core components:
 - Particles: Background visual effect (200 points)
 
 **Node System**:
+
 ```javascript
 // 6 node types with distinct visual treatments
 nodes = [
@@ -55,13 +57,15 @@ nodes = [
 ```
 
 **Force-Directed Layout**:
+
 - Runs 80 iterations on init via `applyForceLayout()`
 - Repulsion force: 600 / (distance²)
-- Attraction force: 0.04 * distance (for connected nodes)
+- Attraction force: 0.04 \* distance (for connected nodes)
 - Damping: 0.85 to prevent oscillation
 - Updates link positions every frame via `updateLinkPositions()`
 
 **Camera Control**:
+
 - Spherical coordinates: (radius, theta, phi)
 - Mouse drag rotates theta/phi
 - Scroll/buttons adjust radius (80-500 range)
@@ -70,6 +74,7 @@ nodes = [
 ### Data Model
 
 **Nodes** (96 total):
+
 - 24 photos: Unsplash images with date/location metadata
 - 16 people: Person entities with emoji/desc
 - 18 places: Geographic locations
@@ -78,6 +83,7 @@ nodes = [
 - 10 files: Document references
 
 **Links**: Source-target pairs creating semantic relationships
+
 - Photo-Person: "who was in this photo"
 - Photo-Place: "where was this taken"
 - Photo-Time: "when was this"
@@ -88,6 +94,7 @@ nodes = [
 ### Performance Considerations
 
 **Critical Paths**:
+
 1. **Texture Preloading**: `preloadTextures()` runs before scene render
    - 24 photo textures loaded via TextureLoader
    - Promise.all waits for completion to prevent flickering
@@ -104,6 +111,7 @@ nodes = [
    - Use `Set` for O(1) connection lookups
 
 **Optimization Opportunities**:
+
 - Label visibility culling (distance < 250, vector.z < 1)
 - Link visibility tied to node visibility
 - Geometry instancing not used (could improve performance for many nodes)
@@ -111,6 +119,7 @@ nodes = [
 ### UI Components
 
 **visionOS Glass UI** (index.html):
+
 - Backdrop-filter blur(40px) for panels
 - Gradient overlays for depth
 - Filter pills for node type toggling
@@ -118,6 +127,7 @@ nodes = [
 - Detail panel with slide-in animation
 
 **Galaxy UI** (promotion.html):
+
 - Samsung One UI design tokens
 - Noto Sans KR font family
 - Intersection Observer for scroll animations
@@ -155,6 +165,7 @@ memory_graph/
 ### Changing Visual Style
 
 **Color Palette** (index.html line 33-42):
+
 ```javascript
 --accent-blue: #0A84FF    // photo
 --accent-green: #30D158   // person
@@ -165,29 +176,33 @@ memory_graph/
 ```
 
 **Node Sizes** (line 987-994):
+
 ```javascript
-sizeMap = { photo: 10, person: 7, place: 6, time: 5, tag: 4, file: 6 }
+sizeMap = { photo: 10, person: 7, place: 6, time: 5, tag: 4, file: 6 };
 ```
 
 ### Modifying Force Layout
 
 Adjust physics at line 1239:
+
 ```javascript
-const iterations = 80;      // More = slower but better layout
-const repulsion = 600;      // Higher = nodes push apart more
-const attraction = 0.04;    // Higher = connected nodes pull closer
-const damping = 0.85;       // Lower = more bouncy
+const iterations = 80; // More = slower but better layout
+const repulsion = 600; // Higher = nodes push apart more
+const attraction = 0.04; // Higher = connected nodes pull closer
+const damping = 0.85; // Lower = more bouncy
 ```
 
 ## Design Systems
 
 ### visionOS (index.html)
+
 - Glass morphism with backdrop-filter
 - Floating panels with shadow-depth
 - SF Pro Display font references
 - Color system: rgba with low opacity layers
 
 ### Samsung Galaxy (promotion.html)
+
 - One UI inspired spacing/typography
 - Galaxy-specific color tokens (--samsung-blue: #1428a0)
 - Noto Sans KR for Korean text
@@ -209,13 +224,13 @@ const damping = 0.85;       // Lower = more bouncy
 
 ## Anti-Patterns
 
-| Wrong | Correct |
-|-------|---------|
-| Open `file://` directly | Use local web server (CORS) |
-| Modify node array without link | Always add both nodes + links |
-| Skip texture preload | `preloadTextures()` before render |
-| Frequent raycasting | Use `Set` for O(1) connection lookup |
-| Geometry per node | Consider instancing for large datasets |
+| Wrong                          | Correct                                |
+| ------------------------------ | -------------------------------------- |
+| Open `file://` directly        | Use local web server (CORS)            |
+| Modify node array without link | Always add both nodes + links          |
+| Skip texture preload           | `preloadTextures()` before render      |
+| Frequent raycasting            | Use `Set` for O(1) connection lookup   |
+| Geometry per node              | Consider instancing for large datasets |
 
 ## Browser Support
 
@@ -226,61 +241,6 @@ const damping = 0.85;       // Lower = more bouncy
 
 ---
 
-## Verified Vibe Coding Protocol
+## VVCS (Verified Vibe Coding System)
 
-이 프로젝트는 VVCS(Verified Vibe Coding System)를 따릅니다.
-
-### 필수 워크플로우
-
-**1. UI/시각 변경**
-```
-"think hard" 포함하여 영향 범위 분석
-  ↓
-수정 구현
-  ↓
-브라우저에서 확인
-  ↓
-/commit-push-pr
-```
-
-**2. 데이터/노드 구조 변경**
-```
-"think harder" 포함하여 설계
-  ↓
-nodes + links 동시 수정
-  ↓
-force layout 파라미터 확인
-  ↓
-브라우저에서 확인
-```
-
-### Think Mode 가이드
-
-| 작업 복잡도 | Think Mode | 예시 |
-|-------------|-----------|------|
-| 단순 수정 | (기본) | 색상/텍스트 변경 |
-| 다중 섹션 변경 | `think hard` | 새 노드 타입 추가 |
-| 아키텍처 변경 | `think harder` | 물리 엔진 수정, 카메라 시스템 |
-
-### Definition of Done (Memory Graph)
-
-**필수 체크리스트**:
-- [ ] 로컬 서버에서 정상 렌더링
-- [ ] 노드/링크 데이터 일관성 (고아 노드 없음)
-- [ ] 60fps 유지 (Performance 탭 확인)
-
-### 자동 검증
-
-VVCS Hooks가 자동으로:
-- Plan-First 워크플로우 권장
-- Think 모드 사용 권장
-
-### 일간 모니터링
-
-```bash
-python3 ~/.claude/scripts/analyze-conversations.py
-```
-
-**목표 지표**:
-- Fix 커밋 비율: < 15%
-- Think 사용률: > 5%
+이 프로젝트는 VVCS를 따릅니다. 상세 워크플로우는 루트 `CLAUDE.md` 참조.
